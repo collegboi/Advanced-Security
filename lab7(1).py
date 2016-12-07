@@ -21,7 +21,6 @@ print str(datasource)
 
 hash = iv
 
-#encrpytinh each characeter separately
 for d in datasource:
 	des = DES.new(datasource[d], DES.MODE_ECB)
 	cipher_text = des.encrypt(hash)

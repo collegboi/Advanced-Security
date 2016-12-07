@@ -6,6 +6,9 @@
 
 from Crypto.PublicKey import RSA
 import OpenSSL #import SSL
+from socket import gethostname
+from pprint import pprint
+from time import gmtime, mktime
 #RSAkey = RSA.generate(2048)
 
 '''
@@ -17,6 +20,9 @@ print(public)
 print(public.exportKey())
 '''
 
+CERT_FILE = "root-cert.crt"
+KEY_FILE = "root-private.key"
+
 def create_csr(common_name, country=None, state=None, city=None,
 		   organization=None, organizational_unit=None,
 		   email_address=None):
@@ -24,32 +30,44 @@ def create_csr(common_name, country=None, state=None, city=None,
 	key = OpenSSL.crypto.PKey()
 	key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
 
-	req = OpenSSL.crypto.X509Req()
-	req.get_subject().CN = common_name
+	cert = OpenSSL.crypto.X509()
+	cert.get_subject().CN = gethostname()
 	if country:
-		req.get_subject().C = country
+		cert.get_subject().C = country
 	if state:
-		req.get_subject().ST = state
+		cert.get_subject().ST = state
 	if city:
-		req.get_subject().L = city
+		cert.get_subject().L = city
 	if organization:
-		req.get_subject().O = organization
+		cert.get_subject().O = organization
 	if organizational_unit:
-		req.get_subject().OU = organizational_unit
+		cert.get_subject().OU = organizational_unit
 	if email_address:
-		req.get_subject().emailAddress = email_address
+		cert.get_subject().emailAddress = email_address
+		
+	cert.set_serial_number(1000)
+	cert.gmtime_adj_notBefore(0)
+	cert.gmtime_adj_notAfter(10*365*24*60*60)
+	cert.set_issuer(cert.get_subject())
+	cert.set_pubkey(key)
+	cert.sign(key, 'sha1')
 
-	req.set_pubkey(key)
-	req.sign(key, 'sha256')
 
-	private_key = OpenSSL.crypto.dump_privatekey(
-		OpenSSL.crypto.FILETYPE_PEM, key)
+	#open(CERT_FILE, "wt").write(
+	#	OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert))
+	#open(KEY_FILE, "wt").write(
+	#	OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key))
+	
+	private_key = OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key)
 
-	csr = OpenSSL.crypto.dump_certificate_request(
-		   OpenSSL.crypto.FILETYPE_PEM, req)
+	csr = OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+	
+	open(CERT_FILE, "wt").write(csr)
+	open(KEY_FILE, "wt").write(private_key)
 
 	return private_key, csr
-	
-#Q1 Part 2
 
-print create_csr('timothy')
+key, pem = create_csr('tester', 'IE','Dublin','Dublin','DIT','Inbound-Proxy','timothy.barnard@mydit.ie')
+print('key: ',key)
+print('\n')
+print('pem: ', pem)
